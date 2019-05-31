@@ -1,0 +1,63 @@
+
+<h1 style="text-align: center">Parking Gent</h1>
+<button onclick="getParkingInfo()">Refresh</button>
+<button onclick="repeatbool = !repeatbool">Toggle repeat</button>
+<ul id="userList"></ul>
+<canvas id="myChart"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+<script>
+repeatbool = false;
+function repeat(){
+    console.log("repeating with repeatbool val:", repeatbool)
+    if (repeatbool){
+        getParkingInfo()
+    }
+    setTimeout(repeat, 60000)
+}
+function getParkingInfo(){
+    let ctx = document.getElementById('myChart').getContext('2d');
+    let chart
+    fetch('/api/parking')
+    .then(r => r.json())
+    .then(r => {
+        r = r.filter(p => {
+            let diff = Math.abs(new Date() - new Date(p.datetime))
+            return Math.floor((diff/1000)/60) < 60
+        })
+        dates = r.map(p => new Date(p.datetime))
+        data = {}
+        r.forEach(el => {
+            el.parking.forEach(parking => {
+                if (data[parking.name]){
+                    data[parking.name].data.push(parking.available)
+                } else {
+                    data[parking.name] = {data: [parking.available]}
+                }
+                
+            });
+        });
+        data = Object.entries(data).map(entry => {
+            let key = entry[0];
+            let value = entry[1].data;
+            let color = `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.8)`
+            return {
+                label: key,
+                backgroundColor: 'rgba(0,0,0,0)',
+                borderColor: color,
+                data: value
+            }
+        })
+        chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates.map(d => `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${d.getMinutes()}`),
+            datasets: data
+        },
+        options: {}
+    });
+    })
+}
+getParkingInfo()
+repeat()
+
+</script>
